@@ -2,7 +2,7 @@
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:3001/api'
 
 // Types for better TypeScript support
-export interface ApiResponse<T = any> {
+export interface ApiResponse<T = unknown> {
   data?: T | null
   error?: string
   message?: string
@@ -11,6 +11,13 @@ export interface ApiResponse<T = any> {
 
 export interface ApiOptions extends RequestInit {
   timeout?: number
+}
+
+// Type for API error responses
+interface ApiErrorResponse {
+  message?: string
+  error?: string
+  [key: string]: unknown
 }
 
 // Enhanced fetch wrapper with error handling and timeout
@@ -49,7 +56,7 @@ export class ApiClient {
   }
 
   // Set authorization token
-  setAuthToken(token: string) {
+  setAuthToken(token: string): void {
     this.defaultHeaders = {
       ...this.defaultHeaders,
       'Authorization': `Bearer ${token}`,
@@ -57,8 +64,8 @@ export class ApiClient {
   }
 
   // Remove authorization token
-  clearAuthToken() {
-    const { Authorization, ...headers } = this.defaultHeaders as any
+  clearAuthToken(): void {
+    const { Authorization, ...headers } = this.defaultHeaders as Record<string, string>
     this.defaultHeaders = headers
   }
 
@@ -80,7 +87,7 @@ export class ApiClient {
     try {
       const response = await fetchWithTimeout(url, config)
       
-      let data: any
+      let data: unknown
       const contentType = response.headers.get('content-type')
       
       if (contentType?.includes('application/json')) {
@@ -90,15 +97,16 @@ export class ApiClient {
       }
 
       if (!response.ok) {
+        const errorData = data as ApiErrorResponse
         return {
           data: null,
-          error: data.message || data.error || `HTTP ${response.status}`,
+          error: errorData.message || errorData.error || `HTTP ${response.status}`,
           status: response.status,
-        } as ApiResponse<T>
+        }
       }
 
       return {
-        data,
+        data: data as T,
         status: response.status,
       }
     } catch (error) {
@@ -108,30 +116,30 @@ export class ApiClient {
             data: null,
             error: 'Request timeout',
             status: 408,
-          } as ApiResponse<T>
+          }
         }
         return {
           data: null,
           error: error.message,
           status: 0,
-        } as ApiResponse<T>
+        }
       }
       return {
         data: null,
         error: 'Unknown error occurred',
         status: 0,
-      } as ApiResponse<T>
+      }
     }
   }
 
   // HTTP Methods
-  async get<T>(endpoint: string, options?: ApiOptions): Promise<ApiResponse<T>> {
+  async get<T = unknown>(endpoint: string, options?: ApiOptions): Promise<ApiResponse<T>> {
     return this.request<T>(endpoint, { ...options, method: 'GET' })
   }
 
-  async post<T>(
+  async post<T = unknown>(
     endpoint: string, 
-    data?: any, 
+    data?: unknown, 
     options?: ApiOptions
   ): Promise<ApiResponse<T>> {
     return this.request<T>(endpoint, {
@@ -141,9 +149,9 @@ export class ApiClient {
     })
   }
 
-  async put<T>(
+  async put<T = unknown>(
     endpoint: string, 
-    data?: any, 
+    data?: unknown, 
     options?: ApiOptions
   ): Promise<ApiResponse<T>> {
     return this.request<T>(endpoint, {
@@ -153,9 +161,9 @@ export class ApiClient {
     })
   }
 
-  async patch<T>(
+  async patch<T = unknown>(
     endpoint: string, 
-    data?: any, 
+    data?: unknown, 
     options?: ApiOptions
   ): Promise<ApiResponse<T>> {
     return this.request<T>(endpoint, {
@@ -165,17 +173,17 @@ export class ApiClient {
     })
   }
 
-  async delete<T>(endpoint: string, options?: ApiOptions): Promise<ApiResponse<T>> {
+  async delete<T = unknown>(endpoint: string, options?: ApiOptions): Promise<ApiResponse<T>> {
     return this.request<T>(endpoint, { ...options, method: 'DELETE' })
   }
 
   // File upload method
-  async upload<T>(
+  async upload<T = unknown>(
     endpoint: string,
     formData: FormData,
     options?: Omit<ApiOptions, 'body'>
   ): Promise<ApiResponse<T>> {
-    const { 'Content-Type': _, ...headersWithoutContentType } = this.defaultHeaders as any
+    const { 'Content-Type': _, ...headersWithoutContentType } = this.defaultHeaders as Record<string, string>
     
     return this.request<T>(endpoint, {
       ...options,
