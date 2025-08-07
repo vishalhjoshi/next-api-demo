@@ -1,8 +1,9 @@
+// Base API configuration
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:3001/api'
 
 // Types for better TypeScript support
 export interface ApiResponse<T = any> {
-  data?: T
+  data?: T | null
   error?: string
   message?: string
   status: number
@@ -93,7 +94,7 @@ export class ApiClient {
           data: null,
           error: data.message || data.error || `HTTP ${response.status}`,
           status: response.status,
-        }
+        } as ApiResponse<T>
       }
 
       return {
@@ -107,19 +108,19 @@ export class ApiClient {
             data: null,
             error: 'Request timeout',
             status: 408,
-          }
+          } as ApiResponse<T>
         }
         return {
           data: null,
           error: error.message,
           status: 0,
-        }
+        } as ApiResponse<T>
       }
       return {
         data: null,
         error: 'Unknown error occurred',
         status: 0,
-      }
+      } as ApiResponse<T>
     }
   }
 
